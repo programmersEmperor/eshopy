@@ -2,11 +2,20 @@
   "name": "@eshopy/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "dev": "npx nx run-many --target=serve --all"
+  },
   "private": true,
   "dependencies": {
-    "axios": "^1.6.0",
-    "express": "^4.21.2"
+    "@prisma/client": "^6.19.2",
+    "axios": "^1.13.5",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "express": "^4.21.2",
+    "express-http-proxy": "^2.1.2",
+    "express-rate-limit": "^8.2.1",
+    "morgan": "^1.10.1",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.8.0",
@@ -14,17 +23,28 @@
     "@nx/esbuild": "22.5.2",
     "@nx/eslint": "22.5.2",
     "@nx/eslint-plugin": "22.5.2",
+    "@nx/express": "^22.5.2",
     "@nx/jest": "22.5.2",
     "@nx/js": "22.5.2",
     "@nx/node": "22.5.2",
+    "@nx/web": "22.5.2",
+    "@nx/webpack": "22.5.2",
     "@nx/workspace": "22.5.2",
+    "@pmmmwh/react-refresh-webpack-plugin": "^0.5.7",
+    "@svgr/webpack": "^8.0.1",
     "@swc-node/register": "~1.11.1",
     "@swc/core": "~1.15.5",
     "@swc/helpers": "~0.5.18",
     "@swc/jest": "~0.2.38",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
     "@types/express": "^4.17.21",
+    "@types/express-http-proxy": "^1.6.7",
     "@types/jest": "^30.0.0",
+    "@types/morgan": "^1.9.10",
     "@types/node": "20.19.9",
+    "@types/swagger-ui-express": "^4.1.8",
+    "dotenv": "^17.3.1",
     "esbuild": "^0.19.2",
     "eslint": "^9.8.0",
     "eslint-config-prettier": "^10.0.0",
@@ -33,11 +53,14 @@
     "jest-util": "^30.0.2",
     "nx": "22.5.2",
     "prettier": "~3.6.2",
+    "prisma": "^6.19.2",
+    "react-refresh": "^0.10.0",
     "ts-jest": "^29.4.0",
     "ts-node": "10.9.1",
     "tslib": "^2.3.0",
     "typescript": "~5.9.2",
-    "typescript-eslint": "^8.40.0"
+    "typescript-eslint": "^8.40.0",
+    "webpack-cli": "^5.1.4"
   },
   "workspaces": [
     "apps/*"
