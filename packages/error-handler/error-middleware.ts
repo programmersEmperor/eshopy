@@ -1,7 +1,7 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { AppError } from ".";
 
-export function errorMiddleware(error: Error, request: Request, response: Response){
+export function errorMiddleware(error: Error, request: Request, response: Response, next: NextFunction){
     
     if(error instanceof AppError){
         console.log(`Error ${request.method} - ${request.url} - ${error.message}`)

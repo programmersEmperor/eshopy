@@ -45,8 +45,6 @@ test-output
 
 /generated/prisma
 
-/generated/prisma
-
 .env*
 !.env.example
 

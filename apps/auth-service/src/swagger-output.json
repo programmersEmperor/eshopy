@@ -1,0 +1,45 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Eshopy Auth Service",
+    "description": "Eshopy Auth Service API Documentation",
+    "version": "1.0.0"
+  },
+  "host": "localhost:6001",
+  "basePath": "/",
+  "schemes": [
+    "http"
+  ],
+  "paths": {
+    "/api/user-registeration": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "example": "Mutasim"
+                },
+                "email": {
+                  "example": "mutasim@yahoo.com"
+                },
+                "password": {
+                  "example": "password"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  }
+}
