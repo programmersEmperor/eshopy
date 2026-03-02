@@ -16,8 +16,8 @@ const sellerSchema = userSchema.extend({
 })
 
 export enum UserType {
-    User,
-    Seller
+    User = 'user',
+    Seller = 'seller'
 }
 
 export const validateRegisterationData = (data: unknown, userType: UserType) => {
@@ -35,7 +35,7 @@ export const validateRegisterationData = (data: unknown, userType: UserType) => 
     }
 }
 
-export const checkOtpRestriction = async (email: string) => {
+export const checkOtpRestrictions = async (email: string) => {
     const lockedEmail = await redis.get(`otp_lock:${email}`);
     if(lockedEmail) throw new ValidationError('Account locked due to many failed attempts! Try again after 30 minutes')
 
@@ -99,6 +99,22 @@ export const validateLoginInput = (data: unknown) => {
     try {
         loginSchema.parse(data)
     } catch (error) {
+        if (error instanceof ZodError){
+            throw new ValidationError(error.issues.at(0)?.message)
+        }
+        throw error;
+    }
+}
+
+const forgetPasswordSchema = z.object({
+    email: z.email(),
+})
+
+export const validateForgetPasswordInput = (data: unknown) => {
+    try {
+        forgetPasswordSchema.parse(data)
+    }
+    catch(error){
         if (error instanceof ZodError){
             throw new ValidationError(error.issues.at(0)?.message)
         }

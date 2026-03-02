@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express"
-import { checkOtpRestriction as checkOtpRestrictions, sendOtp, trackOtpRequests, UserType, validateLoginInput, validateRegisterationData, validateUserVerificationInput, verifyOtp } from "../utils/auth.helper"
+import { checkOtpRestrictions, sendOtp, trackOtpRequests, UserType, validateForgetPasswordInput, validateLoginInput, validateRegisterationData, validateUserVerificationInput, verifyOtp } from "../utils/auth.helper"
 import { prisma } from "../../../../packages/libs/prisma";
 import { AuthError, ValidationError } from "../../../../packages/error-handler";
 import redis from "../../../../packages/libs/redis";
@@ -114,7 +114,7 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
         //  Create JWT
         const accessToken = jwt.sign({
             id: presistedUser.id,
-            role: 'user'
+            role: UserType.User
         }, 
         process.env.ACCESS_TOKEN_SECRET!, {
             expiresIn: '15m'
@@ -122,7 +122,7 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
         
         const refershToken = jwt.sign({
             id: presistedUser.id,
-            role: 'user',
+            role: UserType.User
         },  
         process.env.REFRESH_TOKEN_SECRET!, {
             expiresIn: '7d'
@@ -140,6 +140,33 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
             }
         })
           
+    }
+    catch(e){
+        return next(e)
+    }
+}
+
+export const userForgetPassword = async (req: Request, res: Response, next: NextFunction) =>{
+    try {
+        validateForgetPasswordInput(req.body);
+        const {email} = req.body;
+        
+        // look for the user
+        const presistedUser = await prisma.users.findUnique({
+            where: {
+                email
+            }
+        });
+
+        if(!presistedUser) throw new ValidationError(`User does not exist!`);
+
+        await checkOtpRestrictions(email);
+        await trackOtpRequests(email);
+        await sendOtp(email, presistedUser.name, "forget-password-user-email")
+
+        res.status(200).json({
+            message: "OTP send to email. Please verfiy your account"
+        })
     }
     catch(e){
         return next(e)
