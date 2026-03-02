@@ -2,7 +2,7 @@ import z, { ZodError } from 'zod'
 import { ValidationError } from '../../../../packages/error-handler'
 import crypto from 'crypto'
 import redis from '../../../../packages/libs/redis'
-import { sendEmail } from './send-mail'
+import { sendEmail } from './sendMail'
 
 const userSchema = z.object({
     name: z.string({ error: 'Missing required attributes' }),

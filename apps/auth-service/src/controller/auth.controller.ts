@@ -4,6 +4,8 @@ import { prisma } from "../../../../packages/libs/prisma";
 import { AuthError, ValidationError } from "../../../../packages/error-handler";
 import redis from "../../../../packages/libs/redis";
 import bcrypt from "bcryptjs";
+import jwt from 'jsonwebtoken';
+import { setCookie } from "../utils/cookies/setCookie";
 
 export const userRegisteration = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -89,3 +91,57 @@ export const verifyUser = async (req: Request, res: Response, next: NextFunction
    }
 }
 
+export const loginUser = async (req: Request, res: Response, next: NextFunction)=>{
+    try {
+        validateLoginInput(req.body);
+        const {email, password} = req.body;
+        
+        // check if not existing
+        const presistedUser = await prisma.users.findUnique({
+            where : {
+                email
+            }
+        })
+
+        if(!presistedUser) throw new AuthError(`User does not exist!`)
+        if(presistedUser.password) {
+            const isValidPassowrd = await bcrypt.compare(password, presistedUser.password)
+            if(!isValidPassowrd) 
+                throw new AuthError(`Invalid Credentials!`)
+        }
+
+
+        //  Create JWT
+        const accessToken = jwt.sign({
+            id: presistedUser.id,
+            role: 'user'
+        }, 
+        process.env.ACCESS_TOKEN_SECRET!, {
+            expiresIn: '15m'
+        })
+        
+        const refershToken = jwt.sign({
+            id: presistedUser.id,
+            role: 'user',
+        },  
+        process.env.REFRESH_TOKEN_SECRET!, {
+            expiresIn: '7d'
+        })
+
+        setCookie(res, 'access_token', accessToken);
+        setCookie(res, 'refresh_token', refershToken);
+
+        return res.status(200).json({
+            message: 'Login Successfully' ,
+            user: {
+                id: presistedUser.id,
+                name: presistedUser.name,
+                email: presistedUser.email
+            }
+        })
+          
+    }
+    catch(e){
+        return next(e)
+    }
+}
