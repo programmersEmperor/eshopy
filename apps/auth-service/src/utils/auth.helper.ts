@@ -4,13 +4,13 @@ import crypto from 'crypto'
 import redis from '../../../../packages/libs/redis'
 import { sendEmail } from './sendMail'
 
-const userSchema = z.object({
+export const userSchema = z.object({
     name: z.string({ error: 'Missing required attributes' }),
     email: z.email('Invalid email format!'),
     password: z.string().optional(),
 })
 
-const sellerSchema = userSchema.extend({
+export const sellerSchema = userSchema.extend({
     phone_number: z.string({ error: 'Missing required attributes' }),
     country: z.string({ error: 'Missing required attributes' })
 })
@@ -20,19 +20,25 @@ export enum UserType {
     Seller = 'seller'
 }
 
-export const validateRegisterationData = (data: unknown, userType: UserType) => {
+export const validateSchema = (schema: z.ZodObject, input: unknown) => {
     try {
-        if(userType === UserType.Seller){
-            sellerSchema.parse(data)
-            return;
-        }
-        userSchema.parse(data)
-    } catch (error) {
-        if (error instanceof ZodError){
-            throw new ValidationError(error.issues.at(0)?.message)
-        }
-        throw error;
+        schema.parse(input)
     }
+    catch(e) {
+        if (e instanceof ZodError){
+            throw new ValidationError(e.issues.at(0)?.message)
+        }
+        throw e;
+    }
+}
+
+export const validateRegisterationData = (data: unknown, userType: UserType) => {
+    if(userType === UserType.Seller){
+        validateSchema(sellerSchema, data)
+        return;
+    }
+    validateSchema(userSchema, data)
+    userSchema.parse(data)
 }
 
 export const checkOtpRestrictions = async (email: string) => {
@@ -67,19 +73,6 @@ export const sendOtp = async (email: string, name: string, template: string) => 
     await redis.set(`otp_cooldown:${email}`, "true", 'EX', 60)
 }
 
-const userVerificationInput = userSchema.extend({
-    otp: z.string({ error: 'Missing required attributes' }).length(4),
-})
-
-export const validateUserVerificationInput = (input: unknown )=>{
-    try { 
-        return userVerificationInput.parse(input);
-    } catch (error) {
-        if (error instanceof ZodError) throw new ValidationError(error.issues.at(0)?.message)
-        throw new ValidationError('Invalid input!')
-    }
-}
-
 export const verifyOtp = async (email: string, otp: string) => {
     // check if otp is not expired
     const getOtpKey = `otp:${email}`
@@ -90,34 +83,3 @@ export const verifyOtp = async (email: string, otp: string) => {
     return (cachedOtp === otp) 
 }
 
-const loginSchema = z.object({
-    'email': z.email(),
-    'password': z.string().optional()
-})
-
-export const validateLoginInput = (data: unknown) => {
-    try {
-        loginSchema.parse(data)
-    } catch (error) {
-        if (error instanceof ZodError){
-            throw new ValidationError(error.issues.at(0)?.message)
-        }
-        throw error;
-    }
-}
-
-const forgetPasswordSchema = z.object({
-    email: z.email(),
-})
-
-export const validateForgetPasswordInput = (data: unknown) => {
-    try {
-        forgetPasswordSchema.parse(data)
-    }
-    catch(error){
-        if (error instanceof ZodError){
-            throw new ValidationError(error.issues.at(0)?.message)
-        }
-        throw error;
-    }
-}

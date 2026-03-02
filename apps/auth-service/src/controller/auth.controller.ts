@@ -1,11 +1,12 @@
 import { Request, Response, NextFunction } from "express"
-import { checkOtpRestrictions, sendOtp, trackOtpRequests, UserType, validateForgetPasswordInput, validateLoginInput, validateRegisterationData, validateUserVerificationInput, verifyOtp } from "../utils/auth.helper"
+import { checkOtpRestrictions, sendOtp, trackOtpRequests, userSchema, UserType, validateRegisterationData, validateSchema, verifyOtp } from "../utils/auth.helper"
 import { prisma } from "../../../../packages/libs/prisma";
 import { AuthError, ValidationError } from "../../../../packages/error-handler";
 import redis from "../../../../packages/libs/redis";
 import bcrypt from "bcryptjs";
 import jwt from 'jsonwebtoken';
 import { setCookie } from "../utils/cookies/setCookie";
+import z from "zod";
 
 export const userRegisteration = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -31,10 +32,13 @@ export const userRegisteration = async (req: Request, res: Response, next: NextF
     }
 }
 
+const userVerifyInputSchema = userSchema.extend({
+    otp: z.string({ error: 'Missing required attributes' }).length(4),
+})
 export const verifyUser = async (req: Request, res: Response, next: NextFunction) =>{
    try {
      // validate input
-    validateUserVerificationInput(req.body);
+    validateSchema(userVerifyInputSchema, req.body);
     const {name, email, otp, password} = req.body;
      
      // check there is no user already created
@@ -91,9 +95,13 @@ export const verifyUser = async (req: Request, res: Response, next: NextFunction
    }
 }
 
+const loginInputSchema = z.object({
+    'email': z.email(),
+    'password': z.string().optional()
+})
 export const loginUser = async (req: Request, res: Response, next: NextFunction)=>{
     try {
-        validateLoginInput(req.body);
+        validateSchema(loginInputSchema, req.body);
         const {email, password} = req.body;
         
         // check if not existing
@@ -146,9 +154,12 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
     }
 }
 
-export const userForgetPassword = async (req: Request, res: Response, next: NextFunction) =>{
+const forgotPasswordInputSchema = z.object({
+    email: z.email(),
+})
+export const userForgotPassword = async (req: Request, res: Response, next: NextFunction) =>{
     try {
-        validateForgetPasswordInput(req.body);
+        validateSchema(forgotPasswordInputSchema, req.body);
         const {email} = req.body;
         
         // look for the user
@@ -166,6 +177,95 @@ export const userForgetPassword = async (req: Request, res: Response, next: Next
 
         res.status(200).json({
             message: "OTP send to email. Please verfiy your account"
+        })
+    }
+    catch(e){
+        return next(e)
+    }
+}
+
+const forgotPasswordOtpInputSchema = z.object({
+    email: z.email(),
+    otp: z.string(),
+})
+export const verfiyForgotPasswordOtp = async (req: Request, res: Response, next: NextFunction) =>{
+    try {
+      // validate input
+     validateSchema(forgotPasswordOtpInputSchema, req.body);
+     const {email, otp} = req.body;
+      
+      // check there is no user already created
+      const presistedUser = await prisma.users.findUnique({
+          where: { email }
+      })
+
+      if (!presistedUser) throw new ValidationError(`User does not exist!`);
+  
+      // validate otp
+      const isOtpValid = await verifyOtp(email, otp);
+      const failedOtpVerificationAttemptesKey = `otp_attempts:${email}`;
+  
+      if (!isOtpValid){
+          const ALLOWED_FAILED_ATTEMPTS_NUMBER = 2;
+  
+          // if more than 2 block the user
+          const failedOtpVerficiationAttempts = parseInt(await redis.get(failedOtpVerificationAttemptesKey) ?? '0');
+          if(failedOtpVerficiationAttempts >= ALLOWED_FAILED_ATTEMPTS_NUMBER){
+              await redis.set(`otp_lock:${email}`, `lock`, 'EX', 1800);
+              await redis.del(`otp:${email}`)
+              throw new ValidationError('Too many failed attempts, your account is lock for 30 minutes');
+ 
+          }
+  
+          // increase the failed attempts
+          await redis.set(failedOtpVerificationAttemptesKey, failedOtpVerficiationAttempts + 1, 'EX', 300)
+          throw new ValidationError(`Invalid OTP! ${ALLOWED_FAILED_ATTEMPTS_NUMBER - failedOtpVerficiationAttempts} attempts reamining!`);
+      }
+  
+      // reset the failed counter
+      await redis.del(`otp:${email}`, failedOtpVerificationAttemptesKey);
+ 
+      return res.status(200).json({
+         message: 'OTP verified. You can reset your password',
+      })
+    } catch(e){
+     return next(e);
+    }
+ }
+
+const resetPasswordInputSchema = z.object({
+    email: z.email(),
+    newPassword: z.string(),
+})
+export const resetPassword = async (req: Request, res: Response, next: NextFunction) =>{
+    try {
+        validateSchema(resetPasswordInputSchema, req.body);
+        const {email, newPassword} = req.body;
+
+        const presistedUser = await prisma.users.findUnique({
+            where: {
+                email
+            }
+        })
+
+        if(!presistedUser) throw new ValidationError(`User does not exist!`);
+        
+        if(presistedUser.password) {
+            const isSamePassword = await bcrypt.compare(newPassword, presistedUser.password)
+            if(isSamePassword) throw new ValidationError('New passowrd cannot be the same as the old password');
+        }
+
+        await prisma.users.update({
+            data: {
+                password: await bcrypt.hash(newPassword, 10),
+            },
+            where: {
+                email,
+            }
+        })
+        
+        return res.status(200).json({
+            message: 'Password  reset successfully!'
         })
     }
     catch(e){
