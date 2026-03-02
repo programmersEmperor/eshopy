@@ -7,7 +7,7 @@ import { sendEmail } from './send-mail'
 const userSchema = z.object({
     name: z.string({ error: 'Missing required attributes' }),
     email: z.email('Invalid email format!'),
-    password: z.string({ error: 'Missing required attributes' }),
+    password: z.string().optional(),
 })
 
 const sellerSchema = userSchema.extend({
@@ -57,12 +57,51 @@ export const trackOtpRequests = async (email: string) =>{
     }
 
     // Track request for 30 minutes
-    await redis.set(otpRequestKey, otpRequestKey + 1, "EX", HOUR);  
+    await redis.set(otpRequestKey, otpRequestsCount + 1, "EX", HOUR);  
 }
 
 export const sendOtp = async (email: string, name: string, template: string) => {
     const otp = crypto.randomInt(1000, 9999).toString();
     await sendEmail(email, 'Verify Your Email', template, {name, otp})
     await redis.set(`otp:${email}`, otp, 'EX', 300)
-    await redis.set(`otp_cooldown:${email}`, otp, 'EX', 60)
+    await redis.set(`otp_cooldown:${email}`, "true", 'EX', 60)
+}
+
+const userVerificationInput = userSchema.extend({
+    otp: z.string({ error: 'Missing required attributes' }).length(4),
+})
+
+export const validateUserVerificationInput = (input: unknown )=>{
+    try { 
+        return userVerificationInput.parse(input);
+    } catch (error) {
+        if (error instanceof ZodError) throw new ValidationError(error.issues.at(0)?.message)
+        throw new ValidationError('Invalid input!')
+    }
+}
+
+export const verifyOtp = async (email: string, otp: string) => {
+    // check if otp is not expired
+    const getOtpKey = `otp:${email}`
+    const cachedOtp = await redis.get(getOtpKey);
+    if (!cachedOtp) throw new ValidationError(`OTP is invalid or expired`)
+
+    // check if the otp is not correct
+    return (cachedOtp === otp) 
+}
+
+const loginSchema = z.object({
+    'email': z.email(),
+    'password': z.string().optional()
+})
+
+export const validateLoginInput = (data: unknown) => {
+    try {
+        loginSchema.parse(data)
+    } catch (error) {
+        if (error instanceof ZodError){
+            throw new ValidationError(error.issues.at(0)?.message)
+        }
+        throw error;
+    }
 }
