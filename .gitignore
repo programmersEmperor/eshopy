@@ -49,3 +49,7 @@ test-output
 !.env.example
 
 *.log
+
+# Next.js
+.next
+out
