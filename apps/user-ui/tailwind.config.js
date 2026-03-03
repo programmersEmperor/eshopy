@@ -19,7 +19,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        poppins: ["var(--font-poppins)", "ui-sans-serif", "sans-serif"],
+        roboto: ["var(--font-roboto)"],
+        poppins: ["var(--font-poppins)"],
       },
     },
   },
