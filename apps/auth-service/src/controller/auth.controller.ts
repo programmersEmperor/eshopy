@@ -310,3 +310,17 @@ export const refreshToken = async (req: Request, res: Response, next: NextFuncti
         return next(e)
     }
 }
+
+export const getUser = async (req: any, res: Response, next: NextFunction) => {
+    try {
+
+        const user = req.user;
+        return res.status(200).json({
+            success: true,
+            user,
+        })
+    }
+    catch(e){
+        return next(e)
+    }
+}
