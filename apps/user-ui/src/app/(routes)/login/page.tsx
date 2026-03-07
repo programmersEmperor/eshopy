@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
+import { useMutation } from "@tanstack/react-query";
+import axios, { AxiosError } from "axios";
 
 type FormData = {
   email: string;
@@ -17,15 +19,30 @@ const LoginPage = () => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const {
     register,
     handleSubmit,
     formState: { errors },
   } = useForm<FormData>();
 
-  const onSubmit = async (data: FormData) => {
-    
+  const loginMutation = useMutation({
+    mutationFn: async (data: FormData) => {
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_SERVER_URI}/api/login-user`, data, {
+        withCredentials: true,
+      });
+      return response.data;
+    },
+    onSuccess: () => { 
+      setServerError(null);
+      router.push("/");
+    },
+    onError: (error: AxiosError<{message: string}>) => {
+      setServerError(error.response?.data?.message || "Invalid credentials");
+
+    }
+  })
+  const onSubmit = (data: FormData) => {
+    loginMutation.mutate(data)
   };
 
   return (
@@ -133,11 +150,12 @@ const LoginPage = () => {
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={loginMutation.isPending}
               className="w-full py-3 bg-black text-white font-semibold rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isLoading ? "Logging in..." : "Login"}
+              {loginMutation.isPending ? "Logging in..." : "Login"}
             </button>
+
           </form>
         </div>
       </div>

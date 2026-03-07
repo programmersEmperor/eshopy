@@ -7,6 +7,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation } from "@tanstack/react-query";
 import axios, { AxiosError } from "axios";
+import { useRouter } from "next/navigation";
 
 enum Step {
   EMAIL = "email",
@@ -146,10 +147,10 @@ const SignWithEmailForm = ({onSubmit}: {onSubmit: (data: SignupFormData) => Prom
       </form>
 }
 
-const OtpVerficationForm = ({onSubmit, onResendOTP}: {onSubmit: (otp: string) => Promise<void>, onResendOTP: () => Promise<void>}) => {
+const OtpVerficationForm = ({onSubmit, onResendOTP, resendPausedTimer}: {onSubmit: (otp: string) => Promise<void>, onResendOTP: () => Promise<void>, resendPausedTimer: number}) => {
   const OTP_LENGTH = 4;
   const [otp, setOtp] = useState<string[]>(new Array(OTP_LENGTH).fill(''));
-  const [timer, setTimer] = useState(60);
+  const [timer, setTimer] = useState(resendPausedTimer);
   const inputRefs = useRef<HTMLInputElement[]>([]);
 
   const isComplete = otp.join("").length === OTP_LENGTH;
@@ -159,6 +160,8 @@ const OtpVerficationForm = ({onSubmit, onResendOTP}: {onSubmit: (otp: string) =>
   }, []);
 
   useEffect(() => {
+    if (timer <= 0) return;
+
     const interval = setInterval(() => {
       if (timer <= 0) {
         clearInterval(interval);
@@ -170,9 +173,8 @@ const OtpVerficationForm = ({onSubmit, onResendOTP}: {onSubmit: (otp: string) =>
     return () => clearInterval(interval);
   }, [timer])
 
-  const handleResendOTP = () => {
-    onResendOTP();
-    setTimer(60);
+  const handleResendOTP = async () => {
+    await onResendOTP();
   }
 
   const handleSubmit = () => {
@@ -258,6 +260,7 @@ const OtpVerficationForm = ({onSubmit, onResendOTP}: {onSubmit: (otp: string) =>
 
 
 const SignupPage = () => {
+  const router = useRouter();
   const [step, setStep] = useState<Step>(Step.EMAIL);
   const [userInput, setUserInput] = useState<SignupFormData>();
 
@@ -271,6 +274,24 @@ const SignupPage = () => {
       setStep(Step.OTP);
     }
   })
+
+  const verifyOtpMutation = useMutation({
+    mutationFn: async (otp: string) => {
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_SERVER_URI}/api/verify-user`, { 
+        ...userInput,
+        otp
+       });
+      return response.data;
+    },
+    onSuccess: () => {
+      router.push("/login");
+    }
+  })
+
+  const handleResendOTP = async () => {
+    if (!userInput) return;
+    await signupMutation.mutateAsync(userInput);
+  }
 
   return (
     <div className="w-full py-10 min-h-[85vh] bg-[#f1f1f1]">
@@ -301,7 +322,7 @@ const SignupPage = () => {
           </div>
 
             {step === Step.EMAIL && <SignWithEmailForm onSubmit={signupMutation.mutateAsync} />}
-            {step === Step.OTP && <OtpVerficationForm onSubmit={async (otp: string) => {}} onResendOTP={async () => {}} />} 
+            {step === Step.OTP && <OtpVerficationForm onSubmit={verifyOtpMutation.mutateAsync} onResendOTP={handleResendOTP} resendPausedTimer={60} />} 
         </div>
       </div>
     </div>

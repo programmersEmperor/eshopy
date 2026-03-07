@@ -173,7 +173,7 @@ export const userForgotPassword = async (req: Request, res: Response, next: Next
 
         await checkOtpRestrictions(email);
         await trackOtpRequests(email);
-        await sendOtp(email, presistedUser.name, "forget-password-user-email")
+        await sendOtp(email, presistedUser.name, "forgot-password-user-mail")
 
         res.status(200).json({
             message: "OTP send to email. Please verfiy your account"
@@ -237,7 +237,7 @@ const resetPasswordInputSchema = z.object({
     email: z.email(),
     newPassword: z.string(),
 })
-export const resetPassword = async (req: Request, res: Response, next: NextFunction) =>{
+export const resetPasswordUser = async (req: Request, res: Response, next: NextFunction) =>{
     try {
         validateSchema(resetPasswordInputSchema, req.body);
         const {email, newPassword} = req.body;
