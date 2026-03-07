@@ -272,3 +272,41 @@ export const resetPasswordUser = async (req: Request, res: Response, next: NextF
         return next(e)
     }
 }
+
+const refreshTokenSchema = z.object({
+    id: z.string(),
+    role: z.enum([UserType.User, UserType.Seller]),
+})
+export const refreshToken = async (req: Request, res: Response, next: NextFunction) =>{
+    try {
+        const refreshToken = req.cookies.refresh_token;
+        if(!refreshToken) throw new ValidationError('Unauthorized! No refresh token found');
+        
+        const decodedToken = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET!) as {id: string, role: UserType};
+        validateSchema(refreshTokenSchema, decodedToken);
+
+        const presistedUser = await prisma.users.findUnique({
+            where: {
+                id: decodedToken.id,
+            }
+        })
+
+        if (!presistedUser) throw new AuthError('Unauthorized! User/Seller not found');
+
+        const newAccessToken = jwt.sign({
+            id: decodedToken.id,
+            role: decodedToken.role,
+        }, 
+        process.env.ACCESS_TOKEN_SECRET!, {
+            expiresIn: '15m'
+        });
+
+        setCookie(res, 'access_token', newAccessToken);
+        return res.status(200).json({
+            success: true,
+        })
+    }
+    catch(e){
+        return next(e)
+    }
+}
