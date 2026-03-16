@@ -3,6 +3,7 @@ import { ValidationError } from '../../../../packages/error-handler'
 import crypto from 'crypto'
 import redis from '../../../../packages/libs/redis'
 import { sendEmail } from './sendMail'
+import { UserRoles } from '../../../../packages/types'
 
 export const userSchema = z.object({
     name: z.string({ error: 'Missing required attributes' }),
@@ -15,10 +16,6 @@ export const sellerSchema = userSchema.extend({
     country: z.string({ error: 'Missing required attributes' })
 })
 
-export enum UserType {
-    User = 'user',
-    Seller = 'seller'
-}
 
 export const validateSchema = (schema: z.ZodObject, input: unknown) => {
     try {
@@ -32,8 +29,8 @@ export const validateSchema = (schema: z.ZodObject, input: unknown) => {
     }
 }
 
-export const validateRegisterationData = (data: unknown, userType: UserType) => {
-    if(userType === UserType.Seller){
+export const validateRegisterationData = (data: unknown, userType: UserRoles) => {
+    if(userType === UserRoles.Seller){
         validateSchema(sellerSchema, data)
         return;
     }

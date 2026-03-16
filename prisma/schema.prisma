@@ -16,12 +16,61 @@ model users {
   avatar images? 
   createdAt DateTime @default(now())
   updatedAt DateTime?
+  reviews shopReviews[]
 }
 
 model images {
   id String @id @default(auto()) @map("_id") @db.ObjectId
   file_id String 
   url String
-  userId String  @unique @db.ObjectId
+  userId String?  @unique @db.ObjectId
+  shopId String?  @unique @db.ObjectId
+  user users? @relation(fields: [userId], references: [id])
+  shop shops? @relation(fields: [shopId], references: [id])
+}
+
+model sellers {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  name String
+  email String @unique
+  password String?
+  phone_number String
+  country String
+  stripeId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+  shopId String? @db.ObjectId
+  shop shops?
+}
+
+model shops {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  name String
+  bio String?
+  category String
+  avatar images?
+  coverBanner String?
+  address String
+  openingHours String?
+  website String?
+  socialLinks Json[]
+  ratings Float @default(0)
+  reviews shopReviews[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+  sellerId String @unique @db.ObjectId
+  sellers sellers @relation(fields: [sellerId], references: [id])
+}
+
+
+model shopReviews {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  shopId String @db.ObjectId
+  userId String @db.ObjectId
+  rating Float
+  reviews String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime? @updatedAt
+  shop shops @relation(fields: [shopId], references: [id])
   user users @relation(fields: [userId], references: [id])
 }
